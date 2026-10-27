@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Crack Metrology Bench</title>
+  <meta name="description" content="A synthetic crack with known true width, measured two ways against ground truth: drag the ground sample distance slider and watch a binary mask lose cracks that sub-pixel estimation still resolves.">
+  <meta name="robots" content="noindex">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Crack Metrology Bench">
+  <meta property="og:description" content="A synthetic crack with known true width, measured two ways against ground truth: drag the ground sample distance slider and watch a binary mask lose cracks that sub-pixel estimation still resolves.">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232f4fa8'/%3E%3Cg stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 20h20'/%3E%3Cpath d='M10 20v-4'/%3E%3Cpath d='M16 20v-6'/%3E%3Cpath d='M22 20v-4'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    /* Document skeleton. The artifact runtime supplies these; a standalone
+       deploy has to declare them itself. [hidden] is load-bearing: the tab
+       panels are toggled with el.hidden. */
+    :root{
+      color-scheme: light;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    html{ -webkit-text-size-adjust: 100%; }
+    body{ margin: 0; }
+    img{ max-width: 100%; }
+    [hidden]{ display: none !important; }
+  </style>
+  <style>
+/* Layout: instrument bench. Sticky tab rail, then a two-pane comparison at the
+   top of each panel and the readout underneath. Collapses to one column at 880px. */
+:root{
+  --bg:#f4f3f0; --surface:#ffffff; --surface-2:#eae8e3; --surface-3:#ded9d1;
+  --fg:#1a1916; --fg-dim:#5d5850; --fg-faint:#8c857a;
+  --line:#d8d3ca; --line-strong:#bbb3a6;
+  --accent:#2f4fa8; --accent-ink:#ffffff; --accent-soft:#dde3f4;
+  --ok:#2a6f4a; --ok-soft:#dcebe1;
+  --warn:#9c6410; --warn-soft:#f5e8d2;
+  --crit:#a92c3c; --crit-soft:#f6dcdf;
+  --brick:#a8705a; --brick-2:#96614d; --mortar:#cfc8bb; --crackink:#241f1c;
+  --font-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:3px; --r-lg:7px;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#141311; --surface:#1b1a17; --surface-2:#23211d; --surface-3:#2e2b25;
+  --fg:#eceae5; --fg-dim:#9d968a; --fg-faint:#736c61;
+  --line:#2e2b25; --line-strong:#423d35;
+  --accent:#7d97e8; --accent-ink:#0d1430; --accent-soft:#1a2240;
+  --ok:#5bbc87; --ok-soft:#142a1e;
+  --warn:#d9a24e; --warn-soft:#2e2210;
+  --crit:#e8737f; --crit-soft:#331418;
+  --brick:#8d5c48; --brick-2:#7a4e3d; --mortar:#55504a; --crackink:#0a0908;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#141311; --surface:#1b1a17; --surface-2:#23211d; --surface-3:#2e2b25;
+  --fg:#eceae5; --fg-dim:#9d968a; --fg-faint:#736c61;
+  --line:#2e2b25; --line-strong:#423d35;
+  --accent:#7d97e8; --accent-ink:#0d1430; --accent-soft:#1a2240;
+  --ok:#5bbc87; --ok-soft:#142a1e;
+  --warn:#d9a24e; --warn-soft:#2e2210;
+  --crit:#e8737f; --crit-soft:#331418;
+  --brick:#8d5c48; --brick-2:#7a4e3d; --mortar:#55504a; --crackink:#0a0908;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1200px;margin:0 auto}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+p{margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:13px;padding-block:11px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:9px;margin-right:auto;min-width:0}
+.brand b{font-size:16.5px;font-weight:700;letter-spacing:-0.015em}
+.brand span{font-size:11px;color:var(--fg-faint);text-transform:uppercase;letter-spacing:.07em}
+.tog{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:5px 11px;font-size:12.5px;cursor:pointer;color:var(--fg-dim)}
+.tog:hover{border-color:var(--line-strong);color:var(--fg)}
+.tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-top:1px solid var(--line)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:10px 13px 9px;font-size:13.5px;font-weight:500;color:var(--fg-dim);cursor:pointer;white-space:nowrap;display:flex;gap:7px;align-items:center}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tab em{font-style:normal;font-family:var(--font-mono);font-size:10px;color:var(--fg-faint)}
+main{padding-block:20px 48px}
+
+.banner{display:flex;gap:10px;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:var(--r-lg);padding:11px 14px;font-size:12.5px;line-height:1.5;margin-bottom:20px}
+.banner b{color:var(--accent);white-space:nowrap;font-weight:700}
+.lede{color:var(--fg-dim);font-size:13.5px;max-width:70ch;margin-bottom:14px}
+.lede b{color:var(--fg);font-weight:600}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.ph{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.ph h3{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-dim);font-weight:600}
+.ph .sp{margin-left:auto;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.pb{padding:14px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.grid-side{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:880px){.grid2,.grid-side{grid-template-columns:minmax(0,1fr)}}
+
+.views{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+@media (max-width:620px){.views{grid-template-columns:1fr}}
+.view{background:var(--surface);min-width:0}
+.vh{display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.vh .t{font-size:12px;font-weight:600}
+.vh .s{font-family:var(--font-mono);font-size:10.5px;color:var(--fg-faint);margin-left:auto}
+canvas{display:block;width:100%;height:auto;max-width:100%}
+
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid var(--line);background:var(--surface-2)}
+.ctrl label{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-dim);font-weight:600;white-space:nowrap}
+.ctrl input[type=range]{flex:1;min-width:150px;accent-color:var(--accent)}
+.gsdval{font-family:var(--font-mono);font-size:17px;font-weight:600;min-width:112px;text-align:right}
+.preset{display:flex;gap:5px;flex-wrap:wrap}
+.preset button{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:3px 9px;font-size:11px;font-family:var(--font-mono);cursor:pointer;color:var(--fg-dim)}
+.preset button:hover{border-color:var(--accent);color:var(--accent)}
+
+.verdict{padding:12px 14px;border-top:1px solid var(--line);font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.verdict .ic{font-family:var(--font-mono);font-weight:700;flex:none}
+.verdict.ok{background:var(--ok-soft)}.verdict.ok .ic{color:var(--ok)}
+.verdict.warn{background:var(--warn-soft)}.verdict.warn .ic{color:var(--warn)}
+.verdict.crit{background:var(--crit-soft)}.verdict.crit .ic{color:var(--crit)}
+
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:420px}
+th{text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-faint);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.tm{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+tr.miss td{background:var(--crit-soft)}
+tr.flip td{background:var(--warn-soft)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.pill.idle{background:var(--surface-3);color:var(--fg-dim)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:1px;background:var(--line)}
+.tile{background:var(--surface);padding:11px 13px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .k{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-faint);font-weight:600}
+.tile .v{font-family:var(--font-mono);font-size:19px;font-weight:600;letter-spacing:-0.02em;line-height:1.25}
+.tile .d{font-size:11.5px;color:var(--fg-dim)}
+
+.code{font-family:var(--font-mono);font-size:11.5px;line-height:1.6;background:var(--surface-2);border-top:1px solid var(--line);padding:12px 14px;overflow-x:auto;white-space:pre;margin:0;max-height:430px;overflow-y:auto}
+.k{color:var(--accent)}.s{color:var(--ok)}.n{color:var(--warn)}.cm{color:var(--fg-faint);font-style:italic}
+.cp{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:3px 9px;font-size:11px;cursor:pointer;color:var(--fg-dim);font-family:var(--font-mono)}
+.cp:hover{border-color:var(--line-strong);color:var(--fg)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+.swatch{height:58px;position:relative;background:var(--mortar);overflow:hidden}
+.card .cb{padding:9px 11px;display:flex;flex-direction:column;gap:5px}
+.card .cn{font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px}
+.card .cd{font-size:12px;color:var(--fg-dim)}
+.card .cs{font-size:11.5px;font-family:var(--font-mono);color:var(--accent);border-top:1px dashed var(--line);padding-top:6px;margin-top:1px}
+
+.note{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:var(--r);padding:10px 12px;font-size:12.5px;display:flex;gap:9px}
+.note b{color:var(--warn)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap gut">
+    <div class="hbar">
+      <div class="brand"><b>Crack Metrology Bench</b><span>measurement layer prototype</span></div>
+      <button class="tog" id="theme" type="button">Theme</button>
+    </div>
+  </div>
+  <div class="wrap gut">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-ap"  aria-selected="true"  aria-controls="p-ap">Aperture <em>01</em></button>
+      <button class="tab" role="tab" id="t-ti"  aria-selected="false" aria-controls="p-ti">Tiling <em>02</em></button>
+      <button class="tab" role="tab" id="t-cf"  aria-selected="false" aria-controls="p-cf">Confusables <em>03</em></button>
+      <button class="tab" role="tab" id="t-out" aria-selected="false" aria-controls="p-out">Output <em>04</em></button>
+      <button class="tab" role="tab" id="t-ds"  aria-selected="false" aria-controls="p-ds">Datasets <em>05</em></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap gut">
+
+<div class="banner">
+  <b>What this is</b>
+  <span>A synthetic crack with a known true width profile, used as a test object. Because the truth is known, both measurement methods can be scored against it. No real inspection imagery is shown and no figure here is a claim about your robot.</span>
+</div>
+
+<!-- ======================= 01 APERTURE ======================= -->
+<section id="p-ap" role="tabpanel" aria-labelledby="t-ap">
+  <p class="lede">The crack below is <b>80 mm of masonry</b> with a true aperture that runs from 0.16 mm to 0.72 mm, following a bed joint and stepping down through a head joint. The left pane is ground truth. The right pane is what a sensor at the chosen ground sample distance actually records. <b>Drag the slider.</b></p>
+
+  <div class="stack">
+    <div class="panel">
+      <div class="ph">
+        <h3>Ground truth against sampled image</h3>
+        <div class="sp">
+          <button class="tog" id="ovl" type="button" aria-pressed="true">Overlays</button>
+        </div>
+      </div>
+      <div class="views">
+        <div class="view">
+          <div class="vh"><span class="t">Ground truth</span><span class="s">reference render</span></div>
+          <canvas id="cTrue" width="760" height="475"></canvas>
+        </div>
+        <div class="view">
+          <div class="vh"><span class="t">Sensor sees</span><span class="s" id="sensorLbl"></span></div>
+          <canvas id="cSens" width="760" height="475"></canvas>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label for="gsd">GSD</label>
+        <input type="range" id="gsd" min="2" max="80" value="34" step="1">
+        <span class="gsdval mono" id="gsdV"></span>
+        <div class="preset">
+          <button type="button" data-g="4">0.04 lab</button>
+          <button type="button" data-g="8">0.08 recommended</button>
+          <button type="button" data-g="25">0.25 close drone</button>
+          <button type="button" data-g="55">0.55 survey pass</button>
+        </div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <div class="panel">
+      <div class="tiles">
+        <div class="tile"><span class="k">ACI-318 outdoor</span><span class="v">0.30 mm</span><span class="d">the reporting threshold</span></div>
+        <div class="tile"><span class="k">probes detected</span><span class="v" id="mDet">—</span><span class="d">of 8 along the skeleton</span></div>
+        <div class="tile"><span class="k">binary mask error</span><span class="v" id="mBin">—</span><span class="d">worst case against truth</span></div>
+        <div class="tile"><span class="k">sub-pixel error</span><span class="v" id="mSub">—</span><span class="d">worst case against truth</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>Aperture probes, orthogonal to the skeleton</h3><div class="sp"><span class="pill idle" id="pThresh"></span></div></div>
+      <div class="tscroll">
+        <table>
+          <thead><tr>
+            <th>#</th><th class="r">true mm</th><th class="r">true px</th>
+            <th class="r">binary mask</th><th class="r">sub-pixel</th><th>verdict at 0.30 mm</th>
+          </tr></thead>
+          <tbody id="probes"></tbody>
+        </table>
+      </div>
+      <div class="pb">
+        <div class="note"><b>!</b><div>A binary mask can only return whole pixels, so its width quantises to the GSD. Sub-pixel estimation reads the partial-area response at the crack edge off the probability map and keeps resolving below one pixel, until the signal itself is gone. Both are shown against the same known truth.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 02 TILING ======================= -->
+<section id="p-ti" role="tabpanel" aria-labelledby="t-ti" hidden>
+  <p class="lede">Patch inference is the right call for micro-cracks: a crack three pixels wide disappears when a 8000 px image is resized to fit a network. But tiling splits continuous topology, and <b>length is the metric that splitting destroys</b>. One crack becomes one instance per tile it touches, each reporting its own fragment.</p>
+
+  <div class="stack">
+    <div class="panel">
+      <div class="ph">
+        <h3>One crack across eight tiles</h3>
+        <div class="sp"><button class="tog" id="stitch" type="button" aria-pressed="false">Stitch instances</button></div>
+      </div>
+      <canvas id="cTile" width="1120" height="260"></canvas>
+      <div class="verdict" id="tileVerdict"></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="ph"><h3>Reported instances</h3><div class="sp"><span class="pill idle" id="tileCount"></span></div></div>
+        <div class="tscroll">
+          <table>
+            <thead><tr><th>instance id</th><th>tiles</th><th class="r">length mm</th><th class="r">max width mm</th></tr></thead>
+            <tbody id="tileRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h3>How stitching works</h3></div>
+        <div class="pb stack" style="gap:9px">
+          <p class="lede" style="margin:0">Three rules, run after inference and before measurement:</p>
+          <p class="lede" style="margin:0"><b>1. Overlap, don't abut.</b> Tiles overlap by at least twice the maximum expected crack width, so every crack is seen whole in at least one tile.</p>
+          <p class="lede" style="margin:0"><b>2. Match at the seam.</b> Two fragments join if their skeleton endpoints land within the overlap band and their tangent directions agree to within about 20 degrees.</p>
+          <p class="lede" style="margin:0"><b>3. Re-measure after joining,</b> never add the fragment lengths. A joined skeleton is re-walked end to end, because the sum of fragment lengths loses the part inside the seam and double counts the overlap.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 03 CONFUSABLES ======================= -->
+<section id="p-cf" role="tabpanel" aria-labelledby="t-cf" hidden>
+  <p class="lede">The false-positive list in the brief is the right one. What it does not say is that the hardest <b>true</b> positive and the most common false positive are the same shape in the same place: a dark line inside a mortar joint. A model trained to suppress mortar lines suppresses the findings that matter most.</p>
+  <div class="stack">
+    <div class="cards" id="confus"></div>
+    <div class="note"><b>!</b><div>This is the one that decides whether the model is usable on masonry. Cracks follow mortar because mortar is the weak path, so the discriminator cannot be "is it in a joint". It has to be built on continuity across courses, aperture variation along the run, and whether the feature crosses brick as well as joint.</div></div>
+  </div>
+</section>
+
+<!-- ======================= 04 OUTPUT ======================= -->
+<section id="p-out" role="tabpanel" aria-labelledby="t-out" hidden>
+  <p class="lede">The structured output from the brief, generated from the measurement on tab 01 at the GSD you set there. Every width carries its own uncertainty, and the record states what the scale was derived from, because a number without its provenance cannot be defended in a report.</p>
+  <div class="panel">
+    <div class="ph"><h3>crack_report.json</h3><div class="sp"><span class="pill acc" id="outGsd"></span><button class="cp" data-copy="outJson" type="button">copy</button></div></div>
+    <pre class="code" id="outJson"></pre>
+  </div>
+</section>
+
+<!-- ======================= 05 DATASETS ======================= -->
+<section id="p-ds" role="tabpanel" aria-labelledby="t-ds" hidden>
+  <p class="lede">What is actually available publicly for <b>masonry</b>, as opposed to pavement and concrete. The pool is small, and the licence column is the one that matters if this feeds a commercial product.</p>
+  <div class="stack">
+    <div class="panel">
+      <div class="ph"><h3>Public masonry crack sources</h3><div class="sp"><span class="pill warn">verify each before use</span></div></div>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>source</th><th>content</th><th class="r">scale</th><th>licence</th><th>risk</th></tr></thead>
+          <tbody id="dsRows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="note"><b>!</b><div>Two traps in that table. A widely cited masonry repo carries <b>GPL-3.0</b> on its code, which is a real question for a commercial product if anything is derived from it. And the largest aggregate is re-annotated from <b>32 separate public datasets</b>, so its terms are inherited from all 32 rather than granted by the aggregate. The licence register is a deliverable, not an afterthought.</div></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);};
+
+/* theme */
+var root=document.documentElement;
+try{var sv=localStorage.getItem('cmb-theme'); if(sv) root.setAttribute('data-theme',sv);}catch(e){}
+$('theme').addEventListener('click',function(){
+  var cur=root.getAttribute('data-theme');
+  var dark=cur?cur==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  var nx=dark?'light':'dark'; root.setAttribute('data-theme',nx);
+  try{localStorage.setItem('cmb-theme',nx);}catch(e){}
+  drawAll();
+});
+
+/* tabs */
+var tabs=[].slice.call(document.querySelectorAll('.tab'));
+tabs.forEach(function(t){ t.addEventListener('click',function(){
+  tabs.forEach(function(o){
+    var on=o===t; o.setAttribute('aria-selected',on?'true':'false');
+    $(o.getAttribute('aria-controls')).hidden=!on;
+  });
+  if(t.id==='t-ti') drawTile();
+});});
+
+/* copy */
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-copy]'); if(!b) return;
+  var el=$(b.getAttribute('data-copy')), old=b.textContent;
+  function done(ok){b.textContent=ok?'copied':'select it';setTimeout(function(){b.textContent=old;},1300);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(el.innerText).then(function(){done(true);},function(){done(false);});
+  } else done(false);
+});
+
+function css(n){ return getComputedStyle(root).getPropertyValue(n).trim(); }
+
+/* =====================================================================
+   THE TEST OBJECT
+   Scene is 80 mm x 50 mm of masonry. The crack centreline and its true
+   aperture are defined in millimetres, so truth is known exactly and both
+   measurement methods can be scored against it.
+   ===================================================================== */
+var SCENE={w:80,h:50};
+var PATH=[  // mm, origin top-left
+  {x:4.0,y:30.1},{x:13.0,y:29.5},{x:22.0,y:30.3},{x:31.0,y:29.6},
+  {x:40.0,y:30.4},{x:48.0,y:29.9},{x:54.0,y:31.2},{x:56.4,y:36.0},
+  {x:56.0,y:42.0},{x:56.8,y:47.0}
+];
+var WID=[0.16,0.22,0.31,0.42,0.55,0.68,0.72,0.58,0.40,0.26]; // mm, true aperture
+var ACI=0.30;
+
+// deterministic sub-pixel estimator noise, stable across redraws
+function jitter(i){ return ((Math.sin(i*12.9898)*43758.5453)%1)*0.11-0.055; }
+
+var PROBE=[];  // 8 probes spread along the path
+(function(){
+  for(var k=0;k<8;k++){
+    var f=k/7*(PATH.length-1.001);
+    var i=Math.floor(f), t=f-i;
+    PROBE.push({
+      i:k,
+      x:PATH[i].x+(PATH[i+1].x-PATH[i].x)*t,
+      y:PATH[i].y+(PATH[i+1].y-PATH[i].y)*t,
+      nx:-(PATH[i+1].y-PATH[i].y), ny:(PATH[i+1].x-PATH[i].x),
+      w:WID[i]+(WID[i+1]-WID[i])*t
+    });
+    var L=Math.hypot(PROBE[k].nx,PROBE[k].ny)||1;
+    PROBE[k].nx/=L; PROBE[k].ny/=L;
+  }
+})();
+
+function pathLengthMM(){
+  var s=0; for(var i=1;i<PATH.length;i++) s+=Math.hypot(PATH[i].x-PATH[i-1].x,PATH[i].y-PATH[i-1].y);
+  return s;
+}
+
+/* ---- measurement model ----
+   binary mask : width can only be a whole number of pixels
+   sub-pixel   : partial-area response, resolves to ~0.05 px, dies below ~0.35 px */
+function measure(gsd){
+  return PROBE.map(function(p,k){
+    var truePx=p.w/gsd;
+    var nBin=Math.round(truePx);
+    var binMM=nBin*gsd;
+    var subOK=truePx>=0.35;
+    var subMM=subOK?(truePx+jitter(k))*gsd:null;
+    return {
+      i:k+1, trueMM:p.w, truePx:truePx,
+      binMM:nBin>0?binMM:null, subMM:subMM,
+      detected:nBin>0,
+      trueReport:p.w>=ACI,
+      binReport:nBin>0?binMM>=ACI:false,
+      subReport:subOK?subMM>=ACI:false
+    };
+  });
+}
+
+/* ---- rendering the scene at an arbitrary pixels-per-mm ---- */
+function paintScene(ctx,ppmm,W,H,overlays){
+  var brick=css('--brick'),brick2=css('--brick-2'),mortar=css('--mortar'),ink=css('--crackink');
+  ctx.fillStyle=mortar; ctx.fillRect(0,0,W,H);
+
+  // bed joint runs across at y 25..35 mm; bricks above and below; head joint at x 52..62 below
+  function rect(xmm,ymm,wmm,hmm,fill){ ctx.fillStyle=fill; ctx.fillRect(xmm*ppmm,ymm*ppmm,wmm*ppmm,hmm*ppmm); }
+  rect(-5,-5,90,30,brick);                 // course above the bed joint
+  rect(-5,35,57,20,brick2);                // lower-left brick
+  rect(62,35,25,20,brick2);                // lower-right brick
+
+  // light texture so the surface is not flat
+  ctx.save(); ctx.globalAlpha=0.07; ctx.fillStyle='#000';
+  for(var i=0;i<260;i++){
+    var tx=((i*73)%800)/10, ty=((i*149)%500)/10, r=((i*37)%9)/9*1.1+0.25;
+    ctx.beginPath(); ctx.arc(tx*ppmm,ty*ppmm,r*ppmm*0.5,0,6.283); ctx.fill();
+  }
+  ctx.restore();
+
+  // the crack: variable-width stroke along the centreline
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=ink;
+  for(var s=1;s<PATH.length;s++){
+    var steps=14;
+    for(var q=0;q<steps;q++){
+      var t0=q/steps,t1=(q+1)/steps;
+      var ax=PATH[s-1].x+(PATH[s].x-PATH[s-1].x)*t0, ay=PATH[s-1].y+(PATH[s].y-PATH[s-1].y)*t0;
+      var bx=PATH[s-1].x+(PATH[s].x-PATH[s-1].x)*t1, by=PATH[s-1].y+(PATH[s].y-PATH[s-1].y)*t1;
+      var w=WID[s-1]+(WID[s]-WID[s-1])*((t0+t1)/2);
+      ctx.lineWidth=Math.max(w*ppmm,0.35);
+      ctx.beginPath(); ctx.moveTo(ax*ppmm,ay*ppmm); ctx.lineTo(bx*ppmm,by*ppmm); ctx.stroke();
+    }
+  }
+
+  if(overlays){
+    var acc=css('--accent'), warn=css('--warn');
+    // skeleton
+    ctx.strokeStyle=acc; ctx.lineWidth=Math.max(1,ppmm*0.06); ctx.globalAlpha=0.9;
+    ctx.beginPath(); ctx.moveTo(PATH[0].x*ppmm,PATH[0].y*ppmm);
+    for(var j=1;j<PATH.length;j++) ctx.lineTo(PATH[j].x*ppmm,PATH[j].y*ppmm);
+    ctx.stroke(); ctx.globalAlpha=1;
+    // orthogonal probes
+    PROBE.forEach(function(p,k){
+      var L=2.6;
+      ctx.strokeStyle=warn; ctx.lineWidth=Math.max(1,ppmm*0.05);
+      ctx.beginPath();
+      ctx.moveTo((p.x-p.nx*L)*ppmm,(p.y-p.ny*L)*ppmm);
+      ctx.lineTo((p.x+p.nx*L)*ppmm,(p.y+p.ny*L)*ppmm);
+      ctx.stroke();
+      ctx.fillStyle=warn; ctx.font=(ppmm*1.5)+'px "IBM Plex Mono", monospace';
+      ctx.fillText(String(k+1),(p.x+p.nx*L+0.5)*ppmm,(p.y+p.ny*L+0.6)*ppmm);
+    });
+  }
+}
+
+var off=document.createElement('canvas');
+function drawTrue(){
+  var c=$('cTrue'), ctx=c.getContext('2d');
+  var ppmm=c.width/SCENE.w;
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,c.width,c.height);
+  paintScene(ctx,ppmm,c.width,c.height,$('ovl').getAttribute('aria-pressed')==='true');
+}
+function drawSensor(gsd){
+  var c=$('cSens'), ctx=c.getContext('2d');
+  // render ground truth at high resolution, then resample to the sensor grid
+  var hiPP=c.width/SCENE.w;
+  off.width=c.width; off.height=c.height;
+  paintScene(off.getContext('2d'),hiPP,off.width,off.height,false);
+
+  var sw=Math.max(6,Math.min(1600,Math.round(SCENE.w/gsd)));
+  var sh=Math.max(4,Math.round(sw*(SCENE.h/SCENE.w)));
+  var tmp=document.createElement('canvas'); tmp.width=sw; tmp.height=sh;
+  var tc=tmp.getContext('2d'); tc.imageSmoothingEnabled=true; tc.imageSmoothingQuality='high';
+  tc.drawImage(off,0,0,sw,sh);                       // area-average down to sensor pixels
+
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,c.width,c.height);
+  ctx.imageSmoothingEnabled=false;                   // show the pixels as pixels
+  ctx.drawImage(tmp,0,0,c.width,c.height);
+
+  if($('ovl').getAttribute('aria-pressed')==='true'){
+    var ppmm=c.width/SCENE.w, warn=css('--warn');
+    ctx.strokeStyle=warn; ctx.lineWidth=1.4;
+    PROBE.forEach(function(p){
+      var L=2.6; ctx.beginPath();
+      ctx.moveTo((p.x-p.nx*L)*ppmm,(p.y-p.ny*L)*ppmm);
+      ctx.lineTo((p.x+p.nx*L)*ppmm,(p.y+p.ny*L)*ppmm); ctx.stroke();
+    });
+  }
+  $('sensorLbl').textContent=sw+' x '+sh+' px';
+}
+
+function fmt(v,d){ return v==null?'—':v.toFixed(d==null?2:d); }
+
+function update(){
+  var gsd=+$('gsd').value/100;
+  $('gsdV').textContent=gsd.toFixed(2)+' mm/px';
+  drawTrue(); drawSensor(gsd);
+
+  var rows=measure(gsd);
+  var tb=$('probes'); tb.innerHTML='';
+  var worstBin=0, worstSub=0, det=0, flips=0;
+  rows.forEach(function(r){
+    if(r.detected) det++;
+    if(r.binMM!=null) worstBin=Math.max(worstBin,Math.abs(r.binMM-r.trueMM)/r.trueMM*100);
+    if(r.subMM!=null) worstSub=Math.max(worstSub,Math.abs(r.subMM-r.trueMM)/r.trueMM*100);
+    var binFlip=r.binReport!==r.trueReport, subFlip=r.subReport!==r.trueReport;
+    if(binFlip) flips++;
+    var tr=document.createElement('tr');
+    tr.className=!r.detected?'miss':(binFlip?'flip':'');
+    var verdict = !r.detected ? '<span class="pill crit">mask misses it</span>'
+      : binFlip ? '<span class="pill warn">mask '+(r.binReport?'over':'under')+'-reports</span>'
+      : '<span class="pill ok">agrees</span>';
+    tr.innerHTML='<td class="tm">'+r.i+'</td>'+
+      '<td class="r tm">'+fmt(r.trueMM)+'</td>'+
+      '<td class="r tm">'+fmt(r.truePx,2)+'</td>'+
+      '<td class="r tm">'+(r.binMM==null?'—':fmt(r.binMM))+'</td>'+
+      '<td class="r tm">'+(r.subMM==null?'—':fmt(r.subMM))+'</td>'+
+      '<td>'+verdict+'</td>';
+    tb.appendChild(tr);
+  });
+
+  $('mDet').textContent=det+' / 8';
+  $('mBin').textContent=det?('±'+worstBin.toFixed(0)+'%'):'—';
+  $('mSub').textContent=rows.some(function(r){return r.subMM!=null;})?('±'+worstSub.toFixed(0)+'%'):'—';
+  var above=PROBE.filter(function(p){return p.w>=ACI;}).length;
+  $('pThresh').textContent=above+' of 8 probes are at or above 0.30 mm';
+
+  var v=$('verdict');
+  if(det<8){
+    v.className='verdict crit';
+    var miss=rows.filter(function(r){return !r.detected;});
+    var widest=Math.max.apply(null,miss.map(function(r){return r.truePx;}));
+    v.innerHTML='<span class="ic">✕</span><div>At <b>'+gsd.toFixed(2)+' mm/px</b> the mask loses <b>'+(8-det)+' of 8</b> probes entirely: the widest of them spans '+fmt(widest,2)+' px and never forms a mask. Those cracks are not measured badly, they are absent from the report.</div>';
+  } else if(flips>0){
+    v.className='verdict warn';
+    v.innerHTML='<span class="ic">!</span><div>Every probe is detected, but the binary mask puts <b>'+flips+' of 8</b> on the wrong side of the 0.30 mm reporting line, because whole-pixel width quantises to '+gsd.toFixed(2)+' mm. Sub-pixel holds to ±'+worstSub.toFixed(0)+'%.</div>';
+  } else {
+    v.className='verdict ok';
+    v.innerHTML='<span class="ic">✓</span><div>At <b>'+gsd.toFixed(2)+' mm/px</b> every probe spans enough pixels that both methods agree with the truth and with each other. This is the regime the capture spec has to guarantee.</div>';
+  }
+  buildJson(gsd,rows);
+}
+
+$('gsd').addEventListener('input',update);
+document.querySelectorAll('.preset button').forEach(function(b){
+  b.addEventListener('click',function(){ $('gsd').value=b.getAttribute('data-g'); update(); });
+});
+$('ovl').addEventListener('click',function(){
+  var on=this.getAttribute('aria-pressed')==='true';
+  this.setAttribute('aria-pressed',on?'false':'true'); update();
+});
+
+/* ---------------- 04 OUTPUT ---------------- */
+function buildJson(gsd,rows){
+  var seen=rows.filter(function(r){return r.detected;});
+  var widths=seen.map(function(r){return r.subMM!=null?r.subMM:r.binMM;});
+  var mean=widths.length?widths.reduce(function(a,b){return a+b;},0)/widths.length:0;
+  var mx=widths.length?Math.max.apply(null,widths):0;
+  var sorted=widths.slice().sort(function(a,b){return a-b;});
+  var med=sorted.length?(sorted.length%2?sorted[(sorted.length-1)/2]:(sorted[sorted.length/2-1]+sorted[sorted.length/2])/2):0;
+  var unc=0.5*gsd;
+  var L=pathLengthMM();
+  var j=[
+'<span class="cm">// generated from the measurement on tab 01 at the current GSD</span>',
+'{',
+'  <span class="k">"image_id"</span>: <span class="s">"test_object_80x50mm"</span>,',
+'  <span class="k">"scale"</span>: {',
+'    <span class="k">"gsd_mm_per_px"</span>: <span class="n">'+gsd.toFixed(3)+'</span>,',
+'    <span class="k">"derived_from"</span>: <span class="s">"intrinsics + standoff"</span>,',
+'    <span class="k">"uncertainty_mm_per_px"</span>: <span class="n">'+(gsd*0.02).toFixed(4)+'</span>',
+'  },',
+'  <span class="k">"cracks"</span>: [',
+'    {',
+'      <span class="k">"instance_id"</span>: <span class="s">"ck_0001"</span>,',
+'      <span class="k">"polyline_mm"</span>: [['+PATH[0].x.toFixed(1)+','+PATH[0].y.toFixed(1)+'], ['+PATH[4].x.toFixed(1)+','+PATH[4].y.toFixed(1)+'], ['+PATH[PATH.length-1].x.toFixed(1)+','+PATH[PATH.length-1].y.toFixed(1)+']],',
+'      <span class="k">"length_mm"</span>: <span class="n">'+L.toFixed(2)+'</span>,',
+'      <span class="k">"width_mm"</span>: {',
+'        <span class="k">"mean"</span>: <span class="n">'+mean.toFixed(3)+'</span>,',
+'        <span class="k">"median"</span>: <span class="n">'+med.toFixed(3)+'</span>,',
+'        <span class="k">"max"</span>: <span class="n">'+mx.toFixed(3)+'</span>,',
+'        <span class="k">"uncertainty"</span>: <span class="n">'+unc.toFixed(3)+'</span>,',
+'        <span class="k">"method"</span>: <span class="s">"partial_area_subpixel"</span>',
+'      },',
+'      <span class="k">"probes_resolved"</span>: <span class="n">'+seen.length+'</span>,',
+'      <span class="k">"probes_total"</span>: <span class="n">8</span>,',
+'      <span class="k">"exceeds_aci_outdoor"</span>: <span class="n">'+(mx>=ACI)+'</span>,',
+'      <span class="k">"confidence"</span>: <span class="n">'+(seen.length/8).toFixed(2)+'</span>',
+'    }',
+'  ],',
+'  <span class="k">"warnings"</span>: ['+(seen.length<8
+    ? '\n    <span class="s">"'+(8-seen.length)+' probe(s) below the resolving limit at this GSD"</span>,\n    <span class="s">"reported width is a lower bound"</span>\n  '
+    : '')+']',
+'}'].join('\n');
+  $('outJson').innerHTML=j;
+  $('outGsd').textContent=gsd.toFixed(2)+' mm/px';
+}
+
+/* ---------------- 02 TILING ---------------- */
+var TILES=8;
+function drawTile(){
+  var c=$('cTile'), ctx=c.getContext('2d'), W=c.width, H=c.height;
+  var stitched=$('stitch').getAttribute('aria-pressed')==='true';
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=css('--mortar'); ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=css('--brick'); ctx.fillRect(0,0,W,H*0.42);
+  ctx.fillStyle=css('--brick-2'); ctx.fillRect(0,H*0.58,W,H*0.42);
+
+  // a long crack wandering across the strip
+  var pts=[]; for(var i=0;i<=120;i++){
+    var t=i/120;
+    pts.push({x:30+t*(W-60), y:H*0.5+Math.sin(t*7.2)*26+Math.sin(t*23)*7});
+  }
+  ctx.strokeStyle=css('--crackink'); ctx.lineCap='round'; ctx.lineJoin='round';
+  for(var s=1;s<pts.length;s++){
+    ctx.lineWidth=3.4+Math.sin(s/120*3.14)*3.2;
+    ctx.beginPath(); ctx.moveTo(pts[s-1].x,pts[s-1].y); ctx.lineTo(pts[s].x,pts[s].y); ctx.stroke();
+  }
+
+  // tile boundaries
+  var tw=W/TILES;
+  ctx.strokeStyle=css('--accent'); ctx.globalAlpha=0.55; ctx.lineWidth=1.5; ctx.setLineDash([6,5]);
+  for(var k=1;k<TILES;k++){ ctx.beginPath(); ctx.moveTo(k*tw,0); ctx.lineTo(k*tw,H); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+
+  // instance colouring
+  var cols=stitched?[css('--ok')]:[css('--crit'),css('--warn'),css('--accent'),css('--crit'),css('--warn'),css('--accent'),css('--crit'),css('--warn')];
+  ctx.lineWidth=2.4;
+  for(var s2=1;s2<pts.length;s2++){
+    var ti=Math.min(TILES-1,Math.floor(pts[s2].x/tw));
+    ctx.strokeStyle=stitched?cols[0]:cols[ti%cols.length];
+    ctx.beginPath(); ctx.moveTo(pts[s2-1].x,pts[s2-1].y); ctx.lineTo(pts[s2].x,pts[s2].y); ctx.stroke();
+  }
+
+  // per-tile lengths, in mm assuming this strip is 1600 mm wide
+  var mmPerPx=1600/W, segLen=new Array(TILES).fill(0), total=0;
+  for(var s3=1;s3<pts.length;s3++){
+    var d=Math.hypot(pts[s3].x-pts[s3-1].x,pts[s3].y-pts[s3-1].y)*mmPerPx;
+    total+=d; segLen[Math.min(TILES-1,Math.floor(pts[s3].x/tw))]+=d;
+  }
+
+  var tb=$('tileRows'); tb.innerHTML='';
+  if(stitched){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="tm">ck_0001</td><td class="tm">1–8</td><td class="r tm">'+total.toFixed(0)+'</td><td class="r tm">0.84</td>';
+    tb.appendChild(tr);
+    $('tileCount').textContent='1 instance';
+    $('tileVerdict').className='verdict ok';
+    $('tileVerdict').innerHTML='<span class="ic">✓</span><div>Fragments joined at the seams and the skeleton re-walked end to end: <b>one crack, '+total.toFixed(0)+' mm</b>. This is the number that belongs in the report.</div>';
+  } else {
+    segLen.forEach(function(L,k){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td class="tm">ck_'+String(k+1).padStart(4,'0')+'</td><td class="tm">'+(k+1)+'</td>'+
+        '<td class="r tm">'+L.toFixed(0)+'</td><td class="r tm">'+(0.46+Math.sin(k)*0.2).toFixed(2)+'</td>';
+      tb.appendChild(tr);
+    });
+    $('tileCount').textContent=TILES+' instances';
+    $('tileVerdict').className='verdict crit';
+    $('tileVerdict').innerHTML='<span class="ic">✕</span><div>Without stitching the same crack is reported as <b>'+TILES+' separate cracks</b>, the longest '+Math.max.apply(null,segLen).toFixed(0)+' mm against a true '+total.toFixed(0)+' mm. Every one of them falls under a length threshold the real crack clears.</div>';
+  }
+}
+$('stitch').addEventListener('click',function(){
+  var on=this.getAttribute('aria-pressed')==='true';
+  this.setAttribute('aria-pressed',on?'false':'true');
+  this.textContent=on?'Stitch instances':'Stitched';
+  drawTile();
+});
+
+/* ---------------- 03 CONFUSABLES ---------------- */
+var CONF=[
+ {n:'Crack through a bed joint',k:'ok',t:'true positive',
+  d:'A real crack running inside the mortar, which is where masonry cracks go because mortar is the weak path.',
+  s:'aperture varies along the run; continues across courses',
+  paint:function(e){e.innerHTML='<i style="position:absolute;left:0;right:0;top:46%;height:12%;background:var(--mortar);filter:brightness(.92)"></i><i style="position:absolute;left:6%;right:6%;top:50%;height:5%;background:var(--crackink);clip-path:polygon(0 40%,20% 0,45% 70%,70% 10%,100% 55%,100% 100%,0 100%)"></i>';}},
+ {n:'Clean mortar line',k:'crit',t:'false positive',
+  d:'The joint itself. Linear, dark, and present on every course of every wall in the dataset.',
+  s:'constant width; terminates exactly at brick edges',
+  paint:function(e){e.innerHTML='<i style="position:absolute;left:0;right:0;top:46%;height:10%;background:#000;opacity:.22"></i>';}},
+ {n:'Cast shadow',k:'crit',t:'false positive',
+  d:'A shadow from relief or from the robot itself. Dark, elongated, and it moves between passes.',
+  s:'soft gradient edge; not repeatable across lighting',
+  paint:function(e){e.innerHTML='<i style="position:absolute;inset:0;background:linear-gradient(105deg,transparent 42%,rgba(0,0,0,.42) 50%,transparent 62%)"></i>';}},
+ {n:'Efflorescence',k:'warn',t:'false positive',
+  d:'Salt deposit leaching out of the joint. Bright rather than dark, but it breaks the texture statistics the model learned.',
+  s:'high reflectance; diffuse boundary; no centreline',
+  paint:function(e){e.innerHTML='<i style="position:absolute;left:18%;top:22%;width:58%;height:56%;background:radial-gradient(ellipse,rgba(255,255,255,.72),transparent 70%)"></i>';}},
+ {n:'Vegetative growth',k:'warn',t:'false positive',
+  d:'Moss or a root in the joint. Often sits exactly where a crack would be, because it grew in one.',
+  s:'branching topology, not a single skeleton',
+  paint:function(e){e.innerHTML='<i style="position:absolute;left:12%;top:30%;width:70%;height:44%;background:repeating-linear-gradient(58deg,rgba(60,110,50,.55) 0 3px,transparent 3px 8px)"></i>';}},
+ {n:'Surface spalling',k:'crit',t:'false positive',
+  d:'A broken face where material has come away. A real defect, but an area defect with no meaningful aperture.',
+  s:'2D region; skeleton collapses to a blob',
+  paint:function(e){e.innerHTML='<i style="position:absolute;left:24%;top:18%;width:48%;height:62%;background:rgba(0,0,0,.3);border-radius:46% 54% 38% 62%"></i>';}}
+];
+(function(){
+  var w=$('confus');
+  CONF.forEach(function(c){
+    var d=document.createElement('div'); d.className='card';
+    var sw=document.createElement('div'); sw.className='swatch'; c.paint(sw);
+    var b=document.createElement('div'); b.className='cb';
+    b.innerHTML='<div class="cn">'+c.n+' <span class="pill '+c.k+'">'+c.t+'</span></div>'+
+      '<div class="cd">'+c.d+'</div><div class="cs">'+c.s+'</div>';
+    d.appendChild(sw); d.appendChild(b); w.appendChild(d);
+  });
+})();
+
+/* ---------------- 05 DATASETS ---------------- */
+var DS=[
+ ['Zenodo masonry crack set','100 UK low-rise images, binary pixel masks','100','CC BY 4.0','<span class="pill ok">clear</span>'],
+ ['Dais et al. masonry','masonry surface crack patches, paper-linked repo','subset','GPL-3.0 on the code','<span class="pill crit">commercial risk</span>'],
+ ['MCrack1300','masonry cracks, 640x640, instance segmentation','1,300','not stated','<span class="pill warn">must confirm</span>'],
+ ['StructDamage','re-annotated aggregate of 32 public datasets','~78,000','inherited from 32 sources','<span class="pill crit">32 sets of terms</span>'],
+ ['TopoMortar','mortar segmentation, 512x512','420','not stated','<span class="pill idle">mortar, not cracks</span>'],
+ ['Brick segmentation set (AutCon 2022)','hand-labelled brickwork walls','large','CC BY (paper)','<span class="pill warn">confirm data terms</span>'],
+ ['Pavement sets (CRACK500, GAPs, CFD)','asphalt and concrete road cracks','large','mixed academic','<span class="pill idle">out of domain</span>']
+];
+(function(){
+  var tb=$('dsRows');
+  DS.forEach(function(r){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="tm">'+r[0]+'</td><td>'+r[1]+'</td><td class="r tm">'+r[2]+'</td><td class="tm">'+r[3]+'</td><td>'+r[4]+'</td>';
+    tb.appendChild(tr);
+  });
+})();
+
+function drawAll(){ update(); if(!$('p-ti').hidden) drawTile(); }
+update();
+})();
+</script>
+
+</body>
+</html>
